@@ -19,6 +19,19 @@ int ending_word(char *word);
  */
 int get_random_number(int max_number);
 
+/**
+ * @brief Searches a linked list for a specific word or counts the number
+ * of nodes.
+ * @param[in] head The head node of the linked list.
+ * @param[in] data_ptr The word to search for in the linked list. 
+ * Pass NULL to disable the search.
+ * @param[out] len A pointer to an integer variable to store the number of
+ * nodes. Pass NULL to disable counting.
+ * @return A pointer to the node containing the matching word if `data_ptr`
+ * is not NULL and a match is found, NULL otherwise.
+ */
+Node *markov_chain_sweeper(const Node *head ,char *data_ptr, int* len);
+
 Node *add_to_database(MarkovChain *markov_chain, char *data_ptr)
 {
     Node *tmp = get_node_from_database(markov_chain, data_ptr);
@@ -54,20 +67,30 @@ Node *add_to_database(MarkovChain *markov_chain, char *data_ptr)
     }
     return tmp;
 }
-
-Node *get_node_from_database(MarkovChain *markov_chain, char *data_ptr)
+Node *markov_chain_sweeper(const Node *head ,char *data_ptr, int* len)
 {
-    Node *tmp_next = markov_chain->database->first;
-    while (tmp_next)
+    for(Node *tmp = head; tmp!= NULL; tmp = tmp->next)
     {
-        char *word2 = tmp_next->data->data;
-        if (!strcmp(word2, data_ptr))
+        if(data_ptr)
         {
-            return tmp_next;
+            char *word = tmp->data->data;
+            if (!strcmp(word, data_ptr))
+            {
+                return tmp;
+            }
         }
-        tmp_next = tmp_next->next;
+        else if(len)
+        {
+            (*len)++;
+        }
     }
     return NULL;
+}
+Node *get_node_from_database(MarkovChain *markov_chain, char *data_ptr)
+{
+
+    Node *head = markov_chain->database->first;
+    return markov_chain_sweeper(head ,data_ptr, NULL);
 }
 
 bool add_node_to_frequencies_list(MarkovNode *first_node,
@@ -120,11 +143,7 @@ MarkovNode *get_first_random_node(MarkovChain *markov_chain)
 {
     int len = 0;
     Node *tmp_next = markov_chain->database->first;
-    while (tmp_next)
-    {
-        len++;
-        tmp_next = tmp_next->next;
-    }
+    markov_chain_sweeper(tmp_next ,NULL, &len);
     bool got_it = false;
     while (!got_it)
     {
@@ -152,7 +171,6 @@ MarkovNode *get_next_random_node(MarkovNode *state_struct_ptr)
     for (int i = 0; i < state_struct_ptr->len_freq_list; i++)
     {
         max_num += (freq_node + i)->frequency;
-        assert((freq_node + i)->frequency == freq_node[i].frequency);
     }
     int random_num = get_random_number(max_num);
     freq_node = state_struct_ptr->frequencies_list;
@@ -175,7 +193,6 @@ void generate_tweet(MarkovChain *markov_chain, MarkovNode *first_node,
     int count = 0;
     while (count < max_length)
     {
-
         if (m_n->last_word || count == max_length - 1)
         {
             printf(LAST_WORD_STR, m_n->data);
